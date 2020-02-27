@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -17,6 +18,30 @@ func isValidAction(ac string) bool {
 		}
 	}
 	return false
+}
+
+func passToSpotifyMessageBus(action string) (bool, error) {
+
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to connect to SystemBus bus:", err)
+		os.Exit(1)
+	}
+
+	defer conn.Close()
+
+	sessionName := "org.mpris.MediaPlayer2.spotify"
+	var objectPath dbus.ObjectPath = "/org/mpris/MediaPlayer2"
+	objectInterfaceForAction := "org.mpris.MediaPlayer2.Player." + action
+
+	sessionObject := conn.Object(sessionName, objectPath)
+	actionStatus := sessionObject.Call(objectInterfaceForAction, 0).Err
+	if actionStatus != nil {
+		fmt.Fprintln(os.Stderr, "Failed to introspect bluez", err)
+		return false, err
+	}
+	return true, errors.New("")
+
 }
 
 func main() {
@@ -36,19 +61,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := dbus.ConnectSessionBus()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to connect to SystemBus bus:", err)
-		os.Exit(1)
-	}
-	defer conn.Close()
+	passToSpotifyMessageBus(action)
 
-	// var s string
-	err = conn.Object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2").Call("org.mpris.MediaPlayer2.Player.PlayPause", 0).Err
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to introspect bluez", err)
-		os.Exit(1)
-	}
-
-	// fmt.Println(s)
 }
